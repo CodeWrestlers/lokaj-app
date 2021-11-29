@@ -20,3 +20,6 @@ kill:
 
 stop:
 	docker container stop lokaj-bot &> /dev/null &
+
+envup:
+	export $(cat .env | xargs)
