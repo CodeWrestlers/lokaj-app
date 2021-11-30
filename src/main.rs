@@ -10,9 +10,6 @@ use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use dotenv::dotenv;
 use std::env;
-use std::mem::size_of;
-use std::sync::mpsc::sync_channel;
-use std::thread;
 use teloxide::prelude::*;
 
 #[tokio::main]
@@ -22,29 +19,20 @@ async fn main() {
     log::info!("Starting Lokaj Bot");
     let bot = Bot::from_env().auto_send();
 
-    //let (tx, rx) = sync_channel(size_of::<PgConnection>());
-
     teloxide::repl(bot, |message| async move {
         log::debug!("{:#?}", message.update.from());
         log::debug!("{:#?}", message.update.text());
 
-        //let user_id = message.update.from().unwrap().id;
-        //let text = message.update.text().unwrap();
-        //tx.send((&user_id, &text)).unwrap();
+        let user_id = message.update.from().unwrap().id;
+        let text = message.update.text().unwrap();
+        log::info!("Connecting to PostgreSQL");
+        let connection = establish_connection();
+        receive_message(&connection, &user_id, &text);
 
         message.answer_dice().await?;
         respond(())
     })
     .await;
-
-    //    thread::spawn(move || {
-    //        log::info!("Connecting to PostgreSQL");
-    //        let connection = establish_connection();
-    //        loop {
-    //            let (user_id, text) = rx.recv().unwrap();
-    //            receive_message(&connection, &user_id, &text);
-    //        }
-    //    });
 }
 
 fn establish_connection() -> PgConnection {
