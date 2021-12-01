@@ -8,6 +8,7 @@ extern crate dotenv;
 use self::models::{Message, NewMessage};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
+use diesel::r2d2;
 use dotenv::dotenv;
 use std::env;
 use teloxide::prelude::*;
@@ -19,6 +20,12 @@ async fn main() {
     log::info!("Starting Lokaj Bot");
     let bot = Bot::from_env().auto_send();
 
+    let pg_connection_manager = r2d2::ConnectionManager::new(get_connection_string());
+    let pg_connection_pool = r2d2::Pool::builder()
+        .max_size(4)
+        .build(pg_connection_manager)
+        .unwrap();
+
     teloxide::repl(bot, |message| async move {
         log::debug!("{:#?}", message.update.from());
         log::debug!("{:#?}", message.update.text());
@@ -26,7 +33,7 @@ async fn main() {
         let user_id = message.update.from().unwrap().id;
         let text = message.update.text().unwrap();
         log::info!("Connecting to PostgreSQL");
-        let connection = establish_connection();
+        let connection = pool.get().unwrap();
         receive_message(&connection, &user_id, &text);
 
         message.answer_dice().await?;
@@ -35,12 +42,12 @@ async fn main() {
     .await;
 }
 
-fn establish_connection() -> PgConnection {
+fn get_connection_string() -> String {
     dotenv().ok();
 
     let database_url_env = env::var("DATABASE_URL");
 
-    let database_url = match database_url_env {
+    match database_url_env {
         Ok(url) => url,
         Err(_) => {
             let database_user = env::var("DATABASE_USER").expect("DATABASE_USER must be set");
@@ -51,9 +58,7 @@ fn establish_connection() -> PgConnection {
                 database_user, database_pass, database_name
             )
         }
-    };
-
-    PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url))
+    }
 }
 
 fn receive_message<'a>(conn: &PgConnection, user_id: &'a i64, text: &'a str) -> Message {
