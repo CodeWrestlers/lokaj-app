@@ -3,6 +3,8 @@ table! {
         id -> Int8,
         user_id -> Int8,
         text -> Text,
+        utc_timestamp -> Timestamptz,
+        unix_timestamp -> Int4,
     }
 }
 
