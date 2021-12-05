@@ -7,6 +7,7 @@ extern crate dotenv;
 extern crate lazy_static;
 
 use self::models::{Message, NewMessage};
+use chrono::prelude::*;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool, PoolError, PooledConnection};
@@ -58,9 +59,12 @@ async fn run() {
                     log::info!("Received a message!");
                     let user_id = message.update.from().unwrap().id;
                     let text = message.update.text().unwrap();
+                    let unix_timestamp = message.update.date;
+
+                    log::trace!("{:#?}", message.update);
 
                     log::info!("Saving message to database...");
-                    receive_message(&user_id, &text).await;
+                    receive_message(&user_id, &text, &unix_timestamp).await;
 
                     message
                         .answer_dice()
@@ -93,12 +97,15 @@ fn get_connection_string() -> String {
     }
 }
 
-async fn receive_message<'a>(user_id: &'a i64, text: &'a str) {
+async fn receive_message<'a>(user_id: &'a i64, text: &'a str, unix_timestamp: &'a i32) {
     use schema::messages;
 
+    let timestamp = Utc::now();
     let new_message = NewMessage {
         user_id: user_id,
         text: text,
+        utc_timestamp: &timestamp,
+        unix_timestamp: unix_timestamp,
     };
 
     let conn = DB
