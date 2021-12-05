@@ -6,7 +6,6 @@ extern crate diesel;
 extern crate dotenv;
 extern crate lazy_static;
 
-use self::models::{Message, NewMessage};
 use chrono::prelude::*;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
@@ -16,6 +15,7 @@ use lazy_static::lazy_static;
 use std::env;
 use teloxide::dispatching::Dispatcher;
 use teloxide::prelude::*;
+use teloxide::types::User;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 type PgPool = Pool<ConnectionManager<PgConnection>>;
@@ -56,15 +56,18 @@ async fn run() {
         |rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Message>| async move {
             UnboundedReceiverStream::new(rx)
                 .for_each_concurrent(None, |message| async move {
-                    log::info!("Received a message!");
+                    log::trace!("Received a message!");
                     let user_id = message.update.from().unwrap().id;
                     let text = message.update.text().unwrap();
                     let unix_timestamp = message.update.date;
 
                     log::trace!("{:#?}", message.update);
 
-                    log::info!("Saving message to database...");
+                    log::trace!("Saving message to database...");
                     receive_message(&user_id, &text, &unix_timestamp).await;
+
+                    log::trace!("Saving user to database...");
+                    save_user(&message.update.from().unwrap()).await;
 
                     message
                         .answer_dice()
@@ -101,7 +104,7 @@ async fn receive_message<'a>(user_id: &'a i64, text: &'a str, unix_timestamp: &'
     use schema::messages;
 
     let timestamp = Utc::now();
-    let new_message = NewMessage {
+    let new_message = models::NewMessage {
         user_id: user_id,
         text: text,
         utc_timestamp: &timestamp,
@@ -114,8 +117,70 @@ async fn receive_message<'a>(user_id: &'a i64, text: &'a str, unix_timestamp: &'
 
     diesel::insert_into(messages::table)
         .values(&new_message)
-        .get_result::<Message>(&conn)
+        .get_result::<models::Message>(&conn)
         .expect("Error saving received message");
 
     log::info!("Message saved!");
+}
+
+async fn save_user<'a>(u: &'a User) {
+    use schema::users;
+
+    let user_check = get_user(&u.id);
+    match user_check {
+        // TODO: update user info
+        Some(u) => log::trace!("User exists, no need to save."),
+        None => {
+            let timestamp = Utc::now();
+            let new_user = models::NewUser {
+                user_id: &u.id,
+                is_bot: &u.is_bot,
+                first_name: &u.first_name,
+                last_name: match &u.last_name {
+                    Some(x) => x,
+                    None => "",
+                },
+                username: match &u.username {
+                    Some(x) => x,
+                    None => "",
+                },
+                language_code: match &u.language_code {
+                    Some(x) => x,
+                    None => "",
+                },
+                is_subscribed: &false,
+                utc_created: &timestamp,
+            };
+
+            let conn = DB
+                .get_connection()
+                .expect("Error retrieving connection from the pool");
+
+            diesel::insert_into(users::table)
+                .values(&new_user)
+                .get_result::<models::User>(&conn)
+                .expect("Error saving user");
+
+            log::trace!("User saved!");
+        }
+    }
+}
+
+fn get_user(uid: &i64) -> Option<models::User> {
+    use schema::users::dsl::*;
+
+    let conn = DB
+        .get_connection()
+        .expect("Error retrieving connection from the pool");
+
+    let result = users
+        .filter(user_id.eq(uid))
+        .limit(1)
+        .load::<models::User>(&conn)
+        .expect("Error loading user");
+
+    log::debug!("Loaded user: {:#?}", result);
+    assert_eq!(result.len(), 1);
+
+    result.first().cloned()
 }
