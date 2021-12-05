@@ -9,13 +9,15 @@ table! {
 }
 
 table! {
-    users (id) {
-        id -> Int8,
+    users (user_id) {
+        user_id -> Int8,
         is_bot -> Bool,
         first_name -> Varchar,
         last_name -> Nullable<Varchar>,
         username -> Nullable<Varchar>,
         language_code -> Nullable<Varchar>,
+        is_subscribed -> Bool,
+        utc_created -> Timestamptz,
     }
 }
 
