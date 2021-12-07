@@ -15,7 +15,8 @@ use lazy_static::lazy_static;
 use std::env;
 use teloxide::dispatching::Dispatcher;
 use teloxide::prelude::*;
-use teloxide::types::User;
+use teloxide::types::{MediaKind, MessageKind, User};
+use teloxide::utils::command::BotCommand;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 type PgPool = Pool<ConnectionManager<PgConnection>>;
@@ -49,37 +50,91 @@ async fn main() {
 async fn run() {
     teloxide::enable_logging!();
 
-    log::info!("Starting Lokaj Bot");
     let bot = Bot::from_env().auto_send();
+    let dp = Dispatcher::new(bot).messages_handler(handler);
 
-    let dp = Dispatcher::new(bot).messages_handler(
-        |rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Message>| async move {
-            UnboundedReceiverStream::new(rx)
-                .for_each_concurrent(None, |message| async move {
-                    log::trace!("Received a message!");
-                    let user_id = message.update.from().unwrap().id;
-                    let text = message.update.text().unwrap();
-                    let unix_timestamp = message.update.date;
-
-                    log::trace!("{:#?}", message.update);
-
-                    log::trace!("Saving message to database...");
-                    receive_message(&user_id, &text, &unix_timestamp).await;
-
-                    log::trace!("Saving user to database...");
-                    save_user(&message.update.from().unwrap()).await;
-
-                    message
-                        .answer_dice()
-                        .await
-                        .expect("Error while replying with dice");
-                })
-                .await;
-        },
-    );
-
+    log::info!("Starting Lokaj Bot");
     dp.dispatch().await;
 }
+
+async fn handler(rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Message>) {
+    UnboundedReceiverStream::new(rx)
+        .for_each_concurrent(None, |message| async move {
+            log::trace!("Received a message!");
+            let user_id = message.update.from().unwrap().id;
+            let text = message.update.text().unwrap();
+            let unix_timestamp = message.update.date;
+
+            log::trace!("{:#?}", message.update);
+
+            log::trace!("Saving message to database...");
+            receive_message(&user_id, &text, &unix_timestamp).await;
+
+            log::trace!("Saving user to database...");
+            save_user(&message.update.from().unwrap()).await;
+
+            log::trace!("Handling a command");
+            match &message.update.kind {
+                MessageKind::Common(msg_data) => match &msg_data.media_kind {
+                    MediaKind::Text(t) => {
+                        log::trace!("Looking for commands in text message...");
+                        t.entities
+                            .iter()
+                            .map(|ent| {
+                                log::trace!("Running a command!");
+                            })
+                            .for_each(|e| log::trace!("Found entity! {:#?}", e));
+                    }
+                    x => {
+                        log::debug!("MediaKind handling not implemented. {:#?}", x);
+                    }
+                },
+                x => {
+                    log::debug!("MessageKind handling not implemented. {:#?}", x);
+                }
+            }
+
+            message
+                .answer_dice()
+                .await
+                .expect("Error while replying with dice");
+        })
+        .await;
+}
+
+#[derive(BotCommand)]
+#[command(rename = "lowercase", description = "Dostępne komendy:")]
+enum Command {
+    #[command(description = "wyświetla ten komunikat.")]
+    Help,
+    #[command(description = "dodaje do listy subskrybentów")]
+    Subscribe,
+    #[command(description = "usuwa z listy subskrybentów")]
+    Unsubscribe,
+}
+
+async fn command_handler(rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Message>) {
+    UnboundedReceiverStream::new(rx)
+        .for_each_concurrent(None, |message| async move {
+            log::trace!("Command handler reporting for duty!");
+        })
+        .await;
+}
+
+//async fn answer(
+//    cx: UpdateWithCx<AutoSend<Bot>, Message>,
+//    command: Command,
+//) -> Result<(), Box<dyn Error + Send + Sync>> {
+//    match command {
+//        Command::Help => cx.answer(Command::descriptions()).await?,
+//        Command::Subscribe => subscribe().await,
+//        Command::Unsubscribe => unsubscribe().await,
+//    }
+//}
+
+async fn subscribe() {}
+
+async fn unsubscribe() {}
 
 fn get_connection_string() -> String {
     dotenv().ok();
