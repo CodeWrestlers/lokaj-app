@@ -9,8 +9,8 @@ table! {
 }
 
 table! {
-    users (user_id) {
-        user_id -> Int8,
+    users (id) {
+        id -> Int8,
         is_bot -> Bool,
         first_name -> Varchar,
         last_name -> Nullable<Varchar>,

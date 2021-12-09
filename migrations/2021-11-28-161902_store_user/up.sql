@@ -1,5 +1,5 @@
 CREATE TABLE users (
-    user_id BIGSERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     is_bot BOOLEAN NOT NULL,
     first_name VARCHAR NOT NULL,
     last_name VARCHAR NULL,

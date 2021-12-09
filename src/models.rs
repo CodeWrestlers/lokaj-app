@@ -36,7 +36,7 @@ pub struct User {
 #[derive(Insertable)]
 #[table_name = "users"]
 pub struct NewUser<'a> {
-    pub user_id: &'a i64,
+    pub id: &'a i64,
     pub is_bot: &'a bool,
     pub first_name: &'a str,
     pub last_name: &'a str,

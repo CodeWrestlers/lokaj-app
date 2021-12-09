@@ -199,7 +199,7 @@ async fn save_user<'a>(u: &'a User) {
         None => {
             let timestamp = Utc::now();
             let new_user = models::NewUser {
-                user_id: &u.id,
+                id: &u.id,
                 is_bot: &u.is_bot,
                 first_name: &u.first_name,
                 last_name: match &u.last_name {
@@ -240,15 +240,18 @@ fn get_user(uid: &i64) -> Option<models::User> {
         .expect("Error retrieving connection from the pool");
 
     let result = users
-        .filter(user_id.eq(uid))
+        .filter(id.eq(uid))
         .limit(1)
         .load::<models::User>(&conn)
         .expect("Error loading user");
 
     log::debug!("Loaded user: {:#?}", result);
-    assert_eq!(result.len(), 1);
 
-    result.first().cloned()
+    if result.len() == 1 {
+        result.first().cloned()
+    } else {
+        None
+    }
 }
 
 fn update_user_subscription(u: &models::User, sub: bool) {
