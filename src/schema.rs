@@ -1,4 +1,20 @@
 table! {
+    garbage_collection (id) {
+        id -> Int4,
+        garbage_type_id -> Int4,
+        collection_date -> Date,
+    }
+}
+
+table! {
+    garbage_types (id) {
+        id -> Int4,
+        name -> Varchar,
+        language_code -> Varchar,
+    }
+}
+
+table! {
     messages (id) {
         id -> Int8,
         user_id -> Int8,
@@ -22,6 +38,8 @@ table! {
 }
 
 allow_tables_to_appear_in_same_query!(
+    garbage_collection,
+    garbage_types,
     messages,
     users,
 );
