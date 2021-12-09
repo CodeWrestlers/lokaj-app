@@ -78,12 +78,10 @@ async fn handler(rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Messa
                 MessageKind::Common(msg_data) => match &msg_data.media_kind {
                     MediaKind::Text(t) => {
                         log::trace!("Looking for commands in text message...");
-                        t.entities
-                            .iter()
-                            .map(|ent| {
-                                log::trace!("Running a command!");
-                            })
-                            .for_each(|e| log::trace!("Found entity! {:#?}", e));
+                        let command = Command::parse(&t.text, "");
+                        let answer = command_handler(command.unwrap(), &user_id).await;
+                        message.answer(answer).await;
+                        log::trace!("...finished looking for commands");
                     }
                     x => {
                         log::debug!("MediaKind handling not implemented. {:#?}", x);
@@ -103,7 +101,10 @@ async fn handler(rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Messa
 }
 
 #[derive(BotCommand)]
-#[command(rename = "lowercase", description = "Dostępne komendy:")]
+#[command(
+    rename = "lowercase",
+    description = "Bot przyjmuje pierwszą wpisaną komendę. Dostępne komendy:"
+)]
 enum Command {
     #[command(description = "wyświetla ten komunikat.")]
     Help,
@@ -113,28 +114,38 @@ enum Command {
     Unsubscribe,
 }
 
-async fn command_handler(rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Message>) {
-    UnboundedReceiverStream::new(rx)
-        .for_each_concurrent(None, |message| async move {
-            log::trace!("Command handler reporting for duty!");
-        })
-        .await;
+// TODO: make it async
+async fn command_handler(cmd: Command, uid: &i64) -> String {
+    match cmd {
+        Command::Help => Command::descriptions(),
+        Command::Subscribe => subscribe(uid),
+        Command::Unsubscribe => unsubscribe(uid),
+    }
 }
 
-//async fn answer(
-//    cx: UpdateWithCx<AutoSend<Bot>, Message>,
-//    command: Command,
-//) -> Result<(), Box<dyn Error + Send + Sync>> {
-//    match command {
-//        Command::Help => cx.answer(Command::descriptions()).await?,
-//        Command::Subscribe => subscribe().await,
-//        Command::Unsubscribe => unsubscribe().await,
-//    }
-//}
+fn subscribe(uid: &i64) -> String {
+    let answer = format!("Subscribed user_id = {}", uid);
+    subscription_update(uid, true);
+    answer
+}
 
-async fn subscribe() {}
+fn unsubscribe(uid: &i64) -> String {
+    let answer = format!("Unsubscribed user_id = {}", uid);
+    subscription_update(uid, false);
+    answer
+}
 
-async fn unsubscribe() {}
+fn subscription_update(uid: &i64, should_subscribe: bool) {
+    let user = get_user(uid);
+    match user {
+        Some(u) => {
+            update_user_subscription(&u, should_subscribe);
+        }
+        None => {
+            log::error!("No user in database!");
+        }
+    }
+}
 
 fn get_connection_string() -> String {
     dotenv().ok();
@@ -238,4 +249,19 @@ fn get_user(uid: &i64) -> Option<models::User> {
     assert_eq!(result.len(), 1);
 
     result.first().cloned()
+}
+
+fn update_user_subscription(u: &models::User, sub: bool) {
+    use schema::users::dsl::*;
+
+    let conn = DB
+        .get_connection()
+        .expect("Error retrieving connection from the pool");
+
+    let result = diesel::update(u)
+        .set(is_subscribed.eq(sub))
+        .get_result::<models::User>(&conn)
+        .expect("Error updating subscription for user");
+
+    log::info!("User {} subscribed!", u.id);
 }

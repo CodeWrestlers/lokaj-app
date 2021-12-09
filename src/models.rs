@@ -21,9 +21,9 @@ pub struct NewMessage<'a> {
 }
 
 //
-#[derive(Queryable, Debug, Clone)]
+#[derive(Queryable, Debug, Clone, Identifiable)]
 pub struct User {
-    pub user_id: i64,
+    pub id: i64,
     pub is_bot: bool,
     pub first_name: String,
     pub last_name: Option<String>,
