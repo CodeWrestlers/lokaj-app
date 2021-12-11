@@ -45,3 +45,18 @@ pub struct NewUser<'a> {
     pub is_subscribed: &'a bool,
     pub utc_created: &'a DateTime<Utc>,
 }
+
+#[derive(Queryable)]
+pub struct GarbageCollection {
+    pub id: i32,
+    pub garbage_type: i32,
+    pub date: NaiveDate,
+}
+
+#[derive(Queryable)]
+pub struct GarbageTypes {
+    pub id: i32,
+    pub name: String,
+    pub emoji: String,
+    pub language_code: String,
+}

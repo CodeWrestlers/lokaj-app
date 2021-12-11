@@ -38,6 +38,8 @@ table! {
     }
 }
 
+joinable!(garbage_collection -> garbage_types (garbage_type_id));
+
 allow_tables_to_appear_in_same_query!(
     garbage_collection,
     garbage_types,

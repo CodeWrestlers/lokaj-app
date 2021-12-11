@@ -16,7 +16,9 @@ INSERT INTO garbage_types VALUES
 CREATE TABLE garbage_collection (
     id SERIAL PRIMARY KEY,
     garbage_type_id SERIAL NOT NULL,
-    collection_date DATE NOT NULL
+    collection_date DATE NOT NULL,
+
+    FOREIGN KEY (garbage_type_id) REFERENCES garbage_types(id)
 );
 
 INSERT INTO garbage_collection (garbage_type_id, collection_date) VALUES
