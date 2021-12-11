@@ -69,10 +69,10 @@ async fn handler(rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Messa
             log::trace!("{:#?}", message.update);
 
             log::trace!("Saving message to database...");
-            receive_message(&user_id, &text, &unix_timestamp).await;
+            receive_message(&user_id, text, &unix_timestamp).await;
 
             log::trace!("Saving user to database...");
-            save_user(&message.update.from().unwrap()).await;
+            save_user(message.update.from().unwrap()).await;
 
             log::trace!("Handling a command");
             match &message.update.kind {
@@ -80,8 +80,18 @@ async fn handler(rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Messa
                     MediaKind::Text(t) => {
                         log::trace!("Looking for commands in text message...");
                         let command = Command::parse(&t.text, "");
-                        let answer = command_handler(command.unwrap(), &user_id).await;
-                        message.answer(answer).await;
+                        match command {
+                            Ok(c) => {
+                                let ans = command_handler(c, &user_id).await;
+                                message
+                                    .answer(ans)
+                                    .await
+                                    .expect("Error answering with command result");
+                            }
+                            Err(e) => {
+                                log::trace!("Command match Err: {}", e);
+                            }
+                        };
                         log::trace!("...finished looking for commands");
                     }
                     x => {
@@ -92,11 +102,6 @@ async fn handler(rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Messa
                     log::debug!("MessageKind handling not implemented. {:#?}", x);
                 }
             }
-
-            message
-                .answer_dice()
-                .await
-                .expect("Error while replying with dice");
         })
         .await;
 }
@@ -115,7 +120,7 @@ enum Command {
     Unsubscribe,
     #[command(description = "listuje planowane wywozy na najbliższe 4 tygodnie.")]
     Timetable,
-    #[command(description = "podaje następny wywóz śmieci")]
+    #[command(description = "podaje następny wywóz śmieci.")]
     Next,
 }
 
@@ -127,12 +132,7 @@ async fn command_handler(cmd: Command, uid: &i64) -> String {
         Command::Unsubscribe => unsubscribe(uid),
         Command::Timetable => timetable(),
         Command::Next => next_collection(),
-        _ => no_such_command(),
     }
-}
-
-fn no_such_command() -> String {
-    String::from("Nie ma takiej komendy.")
 }
 
 fn subscribe(uid: &i64) -> String {
@@ -204,7 +204,6 @@ fn get_timetable() -> Vec<(models::GarbageCollection, models::GarbageTypes)> {
     let today = Utc::now().naive_utc().date();
     let dur = Duration::weeks(4);
     let weeks_from_today = today + dur;
-    let date_range = today..weeks_from_today;
 
     let timetable: Vec<(models::GarbageCollection, models::GarbageTypes)> = garbage_collection
         .filter(collection_date.between(&today, &weeks_from_today))
@@ -240,10 +239,10 @@ async fn receive_message<'a>(user_id: &'a i64, text: &'a str, unix_timestamp: &'
 
     let timestamp = Utc::now();
     let new_message = models::NewMessage {
-        user_id: user_id,
-        text: text,
+        user_id,
+        text,
         utc_timestamp: &timestamp,
-        unix_timestamp: unix_timestamp,
+        unix_timestamp,
     };
 
     let conn = DB
@@ -258,13 +257,13 @@ async fn receive_message<'a>(user_id: &'a i64, text: &'a str, unix_timestamp: &'
     log::info!("Message saved!");
 }
 
-async fn save_user<'a>(u: &'a User) {
+async fn save_user(u: &User) {
     use schema::users;
 
     let user_check = get_user(&u.id);
     match user_check {
         // TODO: update user info
-        Some(u) => log::trace!("User exists, no need to save."),
+        Some(_) => log::trace!("User exists, no need to save."),
         None => {
             let timestamp = Utc::now();
             let new_user = models::NewUser {
@@ -330,7 +329,7 @@ fn update_user_subscription(u: &models::User, sub: bool) {
         .get_connection()
         .expect("Error retrieving connection from the pool");
 
-    let result = diesel::update(u)
+    diesel::update(u)
         .set(is_subscribed.eq(sub))
         .get_result::<models::User>(&conn)
         .expect("Error updating subscription for user");
