@@ -7,6 +7,7 @@ extern crate dotenv;
 extern crate lazy_static;
 
 use chrono::prelude::*;
+use chrono::Duration;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool, PoolError, PooledConnection};
@@ -108,10 +109,14 @@ async fn handler(rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Messa
 enum Command {
     #[command(description = "wyświetla ten komunikat.")]
     Help,
-    #[command(description = "dodaje do listy subskrybentów")]
+    #[command(description = "dodaje do listy subskrybentów.")]
     Subscribe,
-    #[command(description = "usuwa z listy subskrybentów")]
+    #[command(description = "usuwa z listy subskrybentów.")]
     Unsubscribe,
+    #[command(description = "listuje planowane wywozy na najbliższe 4 tygodnie.")]
+    Timetable,
+    #[command(description = "podaje następny wywóz śmieci")]
+    Next,
 }
 
 // TODO: make it async
@@ -120,7 +125,14 @@ async fn command_handler(cmd: Command, uid: &i64) -> String {
         Command::Help => Command::descriptions(),
         Command::Subscribe => subscribe(uid),
         Command::Unsubscribe => unsubscribe(uid),
+        Command::Timetable => timetable(),
+        Command::Next => next_collection(),
+        _ => no_such_command(),
     }
+}
+
+fn no_such_command() -> String {
+    String::from("Nie ma takiej komendy.")
 }
 
 fn subscribe(uid: &i64) -> String {
@@ -145,6 +157,63 @@ fn subscription_update(uid: &i64, should_subscribe: bool) {
             log::error!("No user in database!");
         }
     }
+}
+
+fn timetable() -> String {
+    let tt = get_timetable();
+
+    let tt_vec: Vec<String> = tt
+        .iter()
+        .map(|(gc, gt)| format!("{} - {} {}", gc.date, gt.emoji, gt.name))
+        .collect();
+
+    tt_vec.join("\n")
+}
+
+fn next_collection() -> String {
+    let tt = get_timetable();
+
+    let next_gc: &models::GarbageCollection = match tt.first() {
+        Some((gc, _)) => gc,
+        None => panic!("Timetable empty!"),
+    };
+    let next_gc_date = &next_gc.date;
+
+    let tt_vec: Vec<String> = tt
+        .iter()
+        .filter_map(|(gc, gt)| {
+            if &gc.date == next_gc_date {
+                Some(format!("{} - {} {}", gc.date, gt.emoji, gt.name))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    tt_vec.join("\n")
+}
+
+fn get_timetable() -> Vec<(models::GarbageCollection, models::GarbageTypes)> {
+    use schema::garbage_collection::dsl::*;
+    use schema::garbage_types::dsl::*;
+
+    let conn = DB
+        .get_connection()
+        .expect("Error retrieving connection from the pool");
+
+    let today = Utc::now().naive_utc().date();
+    let dur = Duration::weeks(4);
+    let weeks_from_today = today + dur;
+    let date_range = today..weeks_from_today;
+
+    let timetable: Vec<(models::GarbageCollection, models::GarbageTypes)> = garbage_collection
+        .filter(collection_date.between(&today, &weeks_from_today))
+        .inner_join(garbage_types)
+        .order(collection_date.asc())
+        .load(&conn)
+        .expect("Error loading garbage timetable");
+
+    timetable
 }
 
 fn get_connection_string() -> String {
