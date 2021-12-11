@@ -1,15 +1,16 @@
 CREATE TABLE garbage_types (
     id SERIAL PRIMARY KEY,
     name VARCHAR NOT NULL,
+    emoji CHARACTER(2) NOT NULL DEFAULT '🗑',
     language_code VARCHAR NOT NULL
 );
 
 INSERT INTO garbage_types VALUES
-    (1, 'zmieszane', 'pl'),
-    (2, 'papier', 'pl'),
-    (3, 'plastik i metal', 'pl'),
-    (4, 'bio', 'pl'),
-    (5, 'szkło', 'pl')
+    (1, 'zmieszane', '⚫️', 'pl'),
+    (2, 'papier', '🔵', 'pl'),
+    (3, 'plastik i metal', '🟡', 'pl'),
+    (4, 'bio', '🟤', 'pl'),
+    (5, 'szkło', '🟢', 'pl')
 ;
 
 CREATE TABLE garbage_collection (

@@ -10,6 +10,7 @@ table! {
     garbage_types (id) {
         id -> Int4,
         name -> Varchar,
+        emoji -> Bpchar,
         language_code -> Varchar,
     }
 }
