@@ -16,6 +16,7 @@ pub async fn run() {
     dp.dispatch().await;
 }
 
+// TODO: refactor into multiple methods and wrap common variables into structs
 async fn handler(rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Message>) {
     UnboundedReceiverStream::new(rx)
         .for_each_concurrent(None, |message| async move {
