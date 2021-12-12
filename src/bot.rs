@@ -38,14 +38,11 @@ async fn handler(rx: DispatcherHandlerRx<AutoSend<Bot>, teloxide::prelude::Messa
                     MediaKind::Text(t) => {
                         log::trace!("Looking for commands in text message...");
                         let ans = commands::parse(&t.text, &user_id, "").await;
-                        match ans {
-                            Some(a) => {
-                                message
-                                    .answer(a)
-                                    .await
-                                    .expect("Error answering with command result");
-                            }
-                            None => {}
+                        if let Some(a) = ans {
+                            message
+                                .answer(a)
+                                .await
+                                .expect("Error answering with command result");
                         };
                         log::trace!("...finished looking for commands");
                     }
