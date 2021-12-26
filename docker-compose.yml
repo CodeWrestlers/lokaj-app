@@ -2,8 +2,10 @@ version: '3.9'
 
 services:
   bot:
-    image: lokaj-bot
+    build: .
     restart: always
+    env_file:
+      - .env
 
   postgres:
     image: postgres
@@ -12,7 +14,7 @@ services:
       - 5432:5432
     environment:
       POSTGRES_USER: ${DATABASE_USER}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_PASSWORD: ${DATABASE_PASS}
       POSTGRES_DB: ${DATABASE_NAME}
       POSTGRES_URL: ${DATABASE_URL}
 

@@ -6,4 +6,4 @@ if [ -f .env ]; then
   export $(echo $(cat .env | sed 's/#.*//g'| xargs) | envsubst)
 fi
 
-export DATABASE_URL=postgres://$DATABASE_USER:$DATABASE_PASSWORD@localhost/$DATABASE_NAME
+export DATABASE_URL=postgres://$DATABASE_USER:$DATABASE_PASS@localhost/$DATABASE_NAME
