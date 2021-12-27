@@ -1,6 +1,0 @@
-Makefile
-.gitignore
-Dockerfile
-target/
-.git/
-.env.template

@@ -7,6 +7,14 @@ services:
     env_file:
       - .env
 
+  api:
+    build: api/
+    ports: 
+      - 8000:8000
+    restart: always
+    env_file:
+      - .env
+
   postgres:
     image: postgres
     restart: always

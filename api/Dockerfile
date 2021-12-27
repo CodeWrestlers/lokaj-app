@@ -3,9 +3,18 @@ FROM python:3.8-alpine
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-COPY ./requirements.txt /requirements.txt
-RUN pip install -r /requirements.txt
+EXPOSE 8000
 
-RUN mkdir /lokajapi
 WORKDIR /lokajapi
-COPY ./lokajapi /lokajapi
+
+COPY requirements.txt .
+
+RUN \
+    apk add --no-cache postgresql-libs && \
+    apk add --no-cache --virtual .build-deps gcc musl-dev postgresql-dev && \
+    pip install -r requirements.txt && \
+    apk --purge del .build-deps
+
+COPY ./lokajapi .
+
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
