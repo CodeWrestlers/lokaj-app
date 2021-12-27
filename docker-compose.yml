@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   bot:
-    build: .
+    build: bot/
     restart: always
     env_file:
       - .env
