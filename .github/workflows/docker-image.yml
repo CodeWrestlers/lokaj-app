@@ -36,4 +36,5 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
           push: true
-          tags: ghcr.io/mchelpa/lokaj-bot:latest
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
