@@ -5,8 +5,6 @@ ENV PYTHONUNBUFFERED 1
 
 EXPOSE 8000
 
-WORKDIR /lokajapi
-
 COPY requirements.txt .
 
 RUN \
@@ -15,6 +13,7 @@ RUN \
     pip install -r requirements.txt && \
     apk --purge del .build-deps
 
-COPY ./lokajapi .
+WORKDIR /lokajapi
+COPY ./lokajapi/ /lokajapi
 
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

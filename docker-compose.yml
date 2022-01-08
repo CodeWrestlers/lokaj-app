@@ -8,9 +8,12 @@ services:
       - .env
 
   api:
-    build: api/
+    build: ./api
+    image: "api"
     ports: 
       - 8000:8000
+    volumes:
+    - ./api/lokajapi:/lokajapi
     restart: always
     env_file:
       - .env
