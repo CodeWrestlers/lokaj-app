@@ -1,19 +1,12 @@
-# This is an auto-generated Django model module.
-# You'll have to do the following manually to clean this up:
-#   * Rearrange models' order
-#   * Make sure each model has one field with primary_key=True
-#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
-#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
-# Feel free to rename the models, but don't rename db_table values or field names.
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.deletion import CASCADE
+from langcodes import Language
 from unixtimestampfield.fields import UnixTimeStampField
-import pycountry
 
 
 class GarbageCollection(models.Model):
-    garbage_type_id = models.ForeignKey('GarbageTypes', on_delete=models.DO_NOTHING)
+    garbage_type = models.ForeignKey('GarbageTypes', on_delete=models.DO_NOTHING)
     collection_date = models.DateField(auto_now=True)
 
     class Meta:
@@ -32,12 +25,12 @@ class GarbageTypes(models.Model):
 
     def clean(self):
         self.language_code = self.language_code.lower()
-        if self.language_code not in [x.alpha_3 for x in list(pycountry.languages)]:
+        if not Language.get(self.language_code).is_valid():
             raise ValidationError('Language code is not valid.')
 
 
 class Messages(models.Model):
-    user_id = models.ForeignKey('GarbageTypes', on_delete=CASCADE)
+    user = models.ForeignKey('GarbageTypes', on_delete=CASCADE)
     text = models.TextField()
     utc_timestamp = models.DateTimeField(auto_now=True)
     unix_timestamp = UnixTimeStampField(auto_now=True)
@@ -62,5 +55,5 @@ class Users(models.Model):
 
     def clean(self):
         self.language_code = self.language_code.lower()
-        if self.language_code not in [x.alpha_3 for x in list(pycountry.languages)]:
+        if not Language.get(self.language_code).is_valid():
             raise ValidationError('Language code is not valid.')
