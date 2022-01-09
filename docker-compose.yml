@@ -9,7 +9,7 @@ services:
 
   api:
     build: ./api
-    image: "api"
+    image: api
     ports: 
       - 8000:8000
     volumes:
@@ -17,6 +17,8 @@ services:
     restart: always
     env_file:
       - .env
+    depends_on:
+      - postgres
 
   postgres:
     image: postgres
