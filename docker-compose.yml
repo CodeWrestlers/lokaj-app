@@ -9,7 +9,7 @@ services:
 
   api:
     build: ./api
-    image: api
+    image: ghcr.io/codewrestlers/lokaj-api
     ports: 
       - 8000:8000
     volumes:

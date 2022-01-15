@@ -14,6 +14,6 @@ RUN \
     apk --purge del .build-deps
 
 WORKDIR /lokajapi
-COPY ./lokajapi/ /lokajapi
+ADD ./lokajapi .
 
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
