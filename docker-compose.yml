@@ -8,12 +8,17 @@ services:
       - .env
 
   api:
-    build: api/
+    build: ./api
+    image: ghcr.io/codewrestlers/lokaj-api
     ports: 
       - 8000:8000
+    volumes:
+    - ./api/lokajapi:/lokajapi
     restart: always
     env_file:
       - .env
+    depends_on:
+      - postgres
 
   postgres:
     image: postgres
